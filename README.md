@@ -2,7 +2,11 @@
 
 [TOC]
 
-## 一、`create`操作符
+## 一、创建型操作符`create`
+
+`create`操作符是使用者**自己去发射**事件的。
+
+`subscribe`方法 --> 上游发射器 `observableEmitter.xxx` --> `Observer` 三个方法中接收事件。
 
 ### 1.1 `Observable`
 
@@ -105,4 +109,102 @@ private void onBtnCreateOperatorClicked() {
   });
 }
 ```
+
+## 二、创建型操作符`just`
+
+`just`操作符是**内部去发射**的。
+
+`subscribe`方法 --> `just`(内部会根据我们传递的参数来发射事件)  `observer.onNext()` --> 下游接收到事件。
+
+### 2.1 单一参数
+
+`Observable`类中的静态方法：
+
+```java
+    /**
+     * 泛型方法  单一参数
+     * @param t
+     * @param <T>
+     * @return
+     */
+    public static <T> Observable<T> just(final T t) { //just内部发射事件
+        //想办法让source不为null，而create操作符是使用者自己传进来的
+        return new Observable<T>(new ObservableOnSubscribe<T>() {
+            @Override
+            public void subscribe(Observer<? super T> observableEmitter) {
+                //发射用户传递的参数数据
+                observableEmitter.onNext(t);
+                //调用完毕
+                observableEmitter.onComplete(); //发射事件完毕
+            }
+        });
+    }
+```
+
+### 2.2 可变参数
+
+`Observable`类中的静态方法：
+
+```java
+    /**
+     * 泛型方法 可变参数
+     * @param t
+     * @param <T>
+     * @return
+     */
+    public static <T> Observable<T> just(final T... t) { //just内部发射事件
+        //想办法让source不为null，而create操作符是使用者自己传进来的
+        return new Observable<T>(new ObservableOnSubscribe<T>() {
+            @Override
+            public void subscribe(Observer<? super T> observableEmitter) {
+                for (T t1 : t) {
+                    //发射用户传递的参数数据
+                    observableEmitter.onNext(t1);
+                }
+                //调用完毕
+                observableEmitter.onComplete(); //发射事件完毕
+            }
+        });
+    }
+```
+
+### 2.3 调用实现
+
+```java
+public void onBtnJustOperatorClicked(){
+  Observable.just("A", "B", "C", "D")
+    .subscribe(new Observer<String>() {
+      @Override
+      public void onSubscribe() {
+        Log.d(TAG, "onSubscribe: 已经订阅成功，即将开始发射 ");
+      }
+
+      @Override
+      public void onNext(String item) {
+        Log.d(TAG, "下游接收事件 onNext: " + item);
+      }
+
+      @Override
+      public void onError(Throwable e) {
+      }
+
+      @Override
+      public void onComplete() {
+        Log.d(TAG, "下游接收事件完成 onComplete: ");
+        // D/MainActivity: onSubscribe: 已经订阅成功，即将开始发射
+        // D/MainActivity: 下游接收事件 onNext: A
+        // D/MainActivity: 下游接收事件 onNext: B
+        // D/MainActivity: 下游接收事件 onNext: C
+        // D/MainActivity: 下游接收事件 onNext: D
+        // D/MainActivity: 下游接收事件完成 onComplete:
+      }
+    });
+}
+```
+
+## 三、变换型操作符`map`
+
+变换型操作符，只管上一层给的类型，把上一层给的类型变换成新的类型传递给下一层。
+
+![image](https://github.com/tianyalu/NeRxJavaManualImplementation/raw/master/show/rxjava_transformation_operator_map.png)
 

@@ -17,6 +17,7 @@ import com.sty.ne.rxjava.manualimplementation.custom_rxjava.Observer;
 public class MainActivity extends AppCompatActivity {
     private static final String TAG = MainActivity.class.getSimpleName();
     private Button btnCreateOperator;
+    private Button btnJustOperator;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -29,6 +30,7 @@ public class MainActivity extends AppCompatActivity {
 
     private void initView() {
         btnCreateOperator = findViewById(R.id.btn_create_operator);
+        btnJustOperator = findViewById(R.id.btn_just_operator);
     }
 
     private void addListeners() {
@@ -36,6 +38,12 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onClick(View v) {
                 onBtnCreateOperatorClicked();
+            }
+        });
+        btnJustOperator.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                onBtnJustOperatorClicked();
             }
         });
     }
@@ -82,5 +90,36 @@ public class MainActivity extends AppCompatActivity {
                 // D/MainActivity: 下游接收事件完成 onComplete:
             }
         });
+    }
+
+    public void onBtnJustOperatorClicked(){
+        Observable.just("A", "B", "C", "D")
+                .subscribe(new Observer<String>() {
+                    @Override
+                    public void onSubscribe() {
+                        Log.d(TAG, "onSubscribe: 已经订阅成功，即将开始发射 ");
+                    }
+
+                    @Override
+                    public void onNext(String item) {
+                        Log.d(TAG, "下游接收事件 onNext: " + item);
+                    }
+
+                    @Override
+                    public void onError(Throwable e) {
+
+                    }
+
+                    @Override
+                    public void onComplete() {
+                        Log.d(TAG, "下游接收事件完成 onComplete: ");
+                        // D/MainActivity: onSubscribe: 已经订阅成功，即将开始发射
+                        // D/MainActivity: 下游接收事件 onNext: A
+                        // D/MainActivity: 下游接收事件 onNext: B
+                        // D/MainActivity: 下游接收事件 onNext: C
+                        // D/MainActivity: 下游接收事件 onNext: D
+                        // D/MainActivity: 下游接收事件完成 onComplete:
+                    }
+                });
     }
 }
