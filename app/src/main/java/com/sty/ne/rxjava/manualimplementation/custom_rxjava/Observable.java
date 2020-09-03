@@ -80,4 +80,25 @@ public class Observable<T> { //类声明的泛型T
         ObservableMap<T, R> observableMap = new ObservableMap<>(source, function); //source 上一层的能力
         return new Observable<R>(observableMap); //observableMap是source的实现类
     }
+
+    /**
+     * 所有上游分配线程【指定源Observable工作（发射事件）执行的线程，一直推送延续到Observer】
+     * @param threadMode
+     * @return
+     */
+    public Observable<T> subscribeOn(int threadMode) {
+        //实例化操作符
+        //source == 上一层
+        return create(new SubscribeOn<T>(source, threadMode));
+    }
+
+    /**
+     * 指定下游运算所在线程（可以多次使用无限切换）
+     * @param threadMode
+     * @return
+     */
+    public Observable<T> observableOn(int threadMode) {
+        //实例化 处理下游的线程操作符
+        return create(new ObservableOn<T>(source, threadMode));
+    }
 }

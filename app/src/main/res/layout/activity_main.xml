@@ -31,4 +31,12 @@
         android:textAllCaps="false"
         android:layout_marginTop="4dp"/>
 
+    <Button
+        android:id="@+id/btn_thread_switch"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="手写线程切换操作符"
+        android:textAllCaps="false"
+        android:layout_marginTop="4dp"/>
+
 </LinearLayout>

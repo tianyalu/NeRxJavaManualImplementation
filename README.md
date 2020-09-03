@@ -399,3 +399,289 @@ private void onBtnMapOperatorClicked() {
 }
 ```
 
+## 四、线程切换操作符
+
+### 4.1 `subscribeOn`
+
+指定源`Observable`工作（发射事件）执行的线程，一直推送延续到`Observer`（中途可以用`observerOn`切换线程），它可以在流中的任何位置，如果有多个`subscribeOn`,只有第一个生效。
+
+#### 4.1.1 `subscribeOn`操作符
+
+`Observable`类中的方法：
+
+```java
+/**
+ * 所有上游分配线程【指定源Observable工作（发射事件）执行的线程，一直推送延续到Observer】
+ * @param threadMode
+ * @return
+ */
+public Observable<T> subscribeOn(int threadMode) {
+  //实例化操作符
+  //source == 上一层
+  return create(new SubscribeOn<T>(source, threadMode));
+}
+```
+
+#### 4.1.2 `SubscribeOn`类
+
+```java
+public class SubscribeOn<T> implements ObservableOnSubscribe<T> {
+    private final ObservableOnSubscribe<T> source; //source == 上一层
+    private int threadMode;
+    //给上面所有的操作符都分配异步线程
+    private final ExecutorService executorService = Executors.newCachedThreadPool();
+
+    public SubscribeOn(ObservableOnSubscribe<T> source, int threadMode) {
+        this.source = source;
+        this.threadMode = threadMode;
+    }
+
+    @Override
+    public void subscribe(final Observer<? super T> observableEmitter) {
+        if(Schedulers.Child_THREAD == threadMode) {
+            //用异步线程执行
+            executorService.submit(new Runnable() {
+                @Override
+                public void run() {
+                    source.subscribe(observableEmitter);
+                }
+            });
+        }else if(Schedulers.MAIN_THREAD == threadMode){
+            new Handler(Looper.getMainLooper(), new Handler.Callback() {
+                @Override
+                public boolean handleMessage(@NonNull Message msg) {
+                    source.subscribe(observableEmitter);
+                    return false;
+                }
+            }).sendEmptyMessage(0);
+        }else {
+            source.subscribe(observableEmitter);
+        }
+
+    }
+
+    /**
+     * 由于不需要处理回来后的操作，所以不需要包裹
+     */
+//    private static final class MyObserverOn implements Observer {
+//
+//    }
+}
+```
+
+### 4.2 `observableOn`
+
+指定下游运算所在线程（可以多次使用无限切换）。
+
+#### 4.2.1 `observableOn`操作符
+
+`Observable`类中的方法：
+
+```java
+/**
+ * 指定下游运算所在线程（可以多次使用无限切换）
+ * @param threadMode
+ * @return
+ */
+public Observable<T> observableOn(int threadMode) {
+  //实例化 处理下游的线程操作符
+  return create(new ObservableOn<T>(source, threadMode));
+}
+```
+
+#### 4.2.2 `ObservableOn`类
+
+```java
+public class ObservableOn<T> implements ObservableOnSubscribe<T>{
+    //需要拿到上一层
+    private ObservableOnSubscribe<T> source;
+    private int threadMode;
+    private final ExecutorService executorService = Executors.newCachedThreadPool();
+
+    public ObservableOn(ObservableOnSubscribe<T> source, int threadMode) {
+        this.source = source;
+        this.threadMode = threadMode;
+    }
+
+    @Override
+    public void subscribe(Observer<? super T> observableEmitter) {
+        source.subscribe(new ThreadObserver<T>(observableEmitter));
+    }
+
+    //需要包裹，因为需要专门处理回来的事件
+    private final class ThreadObserver<T> implements Observer<T> {
+        //拿到下一层的 Observer
+        Observer<? super T> observableEmitter;
+
+        public ThreadObserver(Observer<? super T> observableEmitter) {
+            this.observableEmitter = observableEmitter;
+        }
+
+        @Override
+        public void onSubscribe() {
+
+        }
+
+        @Override
+        public void onNext(final T item) {
+            if(Schedulers.MAIN_THREAD == threadMode) {
+                new Handler(Looper.getMainLooper(), new Handler.Callback(){
+                    @Override
+                    public boolean handleMessage(@NonNull Message msg) {
+                        observableEmitter.onNext(item);
+                        return false;
+                    }
+                }).sendEmptyMessage(0);
+            }else if(Schedulers.Child_THREAD == threadMode){
+                executorService.submit(new Runnable() {
+                    @Override
+                    public void run() {
+                        observableEmitter.onNext(item);
+                    }
+                });
+            }else {
+                observableEmitter.onNext(item);
+            }
+        }
+
+        @Override
+        public void onError(final Throwable e) {
+            if(Schedulers.MAIN_THREAD == threadMode) {
+                new Handler(Looper.getMainLooper(), new Handler.Callback(){
+                    @Override
+                    public boolean handleMessage(@NonNull Message msg) {
+                        observableEmitter.onError(e);
+                        return false;
+                    }
+                }).sendEmptyMessage(0);
+            }else if(Schedulers.Child_THREAD == threadMode){
+                executorService.submit(new Runnable() {
+                    @Override
+                    public void run() {
+                        observableEmitter.onError(e);
+                    }
+                });
+            }else {
+                observableEmitter.onError(e);
+            }
+        }
+
+        @Override
+        public void onComplete() {
+            if(Schedulers.MAIN_THREAD == threadMode) {
+                new Handler(Looper.getMainLooper(), new Handler.Callback(){
+                    @Override
+                    public boolean handleMessage(@NonNull Message msg) {
+                        observableEmitter.onComplete();
+                        return false;
+                    }
+                }).sendEmptyMessage(0);
+            }else if(Schedulers.Child_THREAD == threadMode){
+                executorService.submit(new Runnable() {
+                    @Override
+                    public void run() {
+                        observableEmitter.onComplete();
+                    }
+                });
+            }else {
+                observableEmitter.onComplete();
+            }
+        }
+    }
+}
+```
+
+### 4.3 调用实现
+
+```java
+private void onBtnThreadSwitchClicked() {
+  //上游
+  Observable
+    .create(new ObservableOnSubscribe<Integer>() {
+      @Override
+      public void subscribe(Observer<? super Integer> observableEmitter) {
+        Log.d(TAG, "subscribe:  上游开始发射..."+ Thread.currentThread().getName());
+        observableEmitter.onNext(1);  //? super Integer:可写模式 （? extends Integer: 不可写模式-->报错）
+        observableEmitter.onComplete();
+      }
+    })
+    .observableOn(Schedulers.Child_THREAD)
+    .map(new Function<Integer, String>() {
+      @Override
+      public String apply(Integer integer) {
+        Log.d(TAG, "第一个变换 apply: " + integer + "  " + Thread.currentThread().getName());
+        return "[ " + integer + " ]";
+      }
+    })
+    .observableOn(Schedulers.MAIN_THREAD)
+    .map(new Function<String, StringBuffer>() {
+      @Override
+      public StringBuffer apply(String s) {
+        Log.d(TAG, "第二个变换 apply: " + s + "  " + Thread.currentThread().getName());
+        return new StringBuffer().append(s).append("----- ");
+      }
+    })
+    .observableOn(Schedulers.Child_THREAD)
+    .map(new Function<StringBuffer, StringBuffer>() {
+      @Override
+      public StringBuffer apply(StringBuffer stringBuffer) {
+        Log.d(TAG, "第三个变换 apply: " + stringBuffer + "  " + Thread.currentThread().getName());
+        return stringBuffer.append("第三次变换");
+      }
+    })
+    .subscribeOn(Schedulers.Child_THREAD)
+    .observableOn(Schedulers.MAIN_THREAD)
+    .subscribe(new Observer<StringBuffer>() { //下游
+      //接口的实现方法
+      @Override
+      public void onSubscribe() {
+        Log.d(TAG, "onSubscribe: 已经订阅成功，即将开始发射 " + Thread.currentThread().getName());
+      }
+
+      //接口的实现方法
+      @Override
+      public void onNext(StringBuffer item) {
+        Log.d(TAG, "下游接收事件 onNext: " + item + "  " + Thread.currentThread().getName());
+      }
+
+      //接口的实现方法
+      @Override
+      public void onError(Throwable e) {
+
+      }
+
+      //接口的实现方法
+      @Override
+      public void onComplete() {
+        Log.d(TAG, "下游接收事件完成 onComplete: " + Thread.currentThread().getName());
+        // TODO 只有subscribeOn(Schedulers.Child_THREAD)操作符时
+        // D/MainActivity: onSubscribe: 已经订阅成功，即将开始发射 main
+        // D/MainActivity: subscribe:  上游开始发射...pool-1-thread-1
+        // D/MainActivity: 第一个变换 apply: 1  pool-1-thread-1
+        // D/MainActivity: 第二个变换 apply: [ 1 ]  pool-1-thread-1
+        // D/MainActivity: 第三个变换 apply: [ 1 ]-----   pool-1-thread-1
+        // D/MainActivity: 下游接收事件 onNext: [ 1 ]----- 第三次变换  pool-1-thread-1
+        // D/MainActivity: 下游接收事件完成 onComplete: pool-1-thread-1
+
+        // TODO 加上最下面的observableOn(Schedulers.MAIN_THREAD)操作符时
+        // D/MainActivity: onSubscribe: 已经订阅成功，即将开始发射 main
+        // D/MainActivity: subscribe:  上游开始发射...pool-1-thread-1
+        // D/MainActivity: 第一个变换 apply: 1  pool-1-thread-1
+        // D/MainActivity: 第二个变换 apply: [ 1 ]  pool-1-thread-1
+        // D/MainActivity: 第三个变换 apply: [ 1 ]-----   pool-1-thread-1
+        // D/MainActivity: 下游接收事件 onNext: [ 1 ]----- 第三次变换  main
+        // D/MainActivity: 下游接收事件完成 onComplete: main
+
+        // TODO TODO 加上所有的线程切换操作符时
+        // D/MainActivity: onSubscribe: 已经订阅成功，即将开始发射 main
+        // D/MainActivity: subscribe:  上游开始发射...pool-4-thread-1
+        // D/MainActivity: 第一个变换 apply: 1  pool-1-thread-1
+        // D/MainActivity: 第二个变换 apply: [ 1 ]  main
+        // D/MainActivity: 第三个变换 apply: [ 1 ]-----   pool-3-thread-1
+        // D/MainActivity: 下游接收事件 onNext: [ 1 ]----- 第三次变换  main
+        // D/MainActivity: 下游接收事件完成 onComplete: main
+      }
+    });
+}
+```
+
