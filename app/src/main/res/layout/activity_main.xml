@@ -11,7 +11,7 @@
         android:id="@+id/btn_create_operator"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="手写create操作符"
+        android:text="手写create创建型操作符"
         android:textAllCaps="false"
         android:layout_marginTop="4dp"/>
 
@@ -19,7 +19,15 @@
         android:id="@+id/btn_just_operator"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="手写just操作符"
+        android:text="手写just创建型操作符"
+        android:textAllCaps="false"
+        android:layout_marginTop="4dp"/>
+
+    <Button
+        android:id="@+id/btn_map_operator"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="手写map变换型操作符"
         android:textAllCaps="false"
         android:layout_marginTop="4dp"/>
 

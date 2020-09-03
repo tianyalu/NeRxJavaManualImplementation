@@ -64,8 +64,20 @@ public class Observable<T> { //类声明的泛型T
     //Observer<? extends T> 和读写模式没有关系，还是上限下限的思想
     //TODO 在方法定义/声明的参数中使用时，一定是上限和下限
     public void subscribe(Observer<? extends T> observer) {
+        //todo(map) step2
         observer.onSubscribe();
 
+        //todo(map) step4
         source.subscribe(observer);
+    }
+
+    /**
+     * map变换型操作符
+     * T == 上一层传递过来的类型 Integer（变换后的类型）
+     * R == 下一层的类型 String （变换后的类型）
+     */
+    public <R> Observable<R> map(Function<? super T, ? extends R> function) {  //? super T :可写模式   ? extends R :可读模式
+        ObservableMap<T, R> observableMap = new ObservableMap<>(source, function); //source 上一层的能力
+        return new Observable<R>(observableMap); //observableMap是source的实现类
     }
 }
