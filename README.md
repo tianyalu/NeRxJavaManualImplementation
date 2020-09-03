@@ -224,7 +224,7 @@ public void onBtnJustOperatorClicked(){
 
 以下流程图演示了当只有一个`map`变换时程序执行的流程：
 
-![image](https://github.com/tianyalu/NeRxJavaManualImplementation/raw/master/show/rxjava_transformation_operator_map.png)
+![image](https://github.com/tianyalu/NeRxJavaManualImplementation/raw/master/show/rxjava_map_operator_process.png)
 
 ### 3.2 `map`操作符的源码实现
 
